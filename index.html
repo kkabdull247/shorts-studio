@@ -69,6 +69,8 @@ input[type=range]{accent-color:var(--ac);min-height:32px}
 input[type=number]{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px;min-height:40px;width:78px}
 .tpl{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;margin:8px 0}.tpl button{min-height:44px;border:1px solid var(--bd);border-radius:9px;background:#222;color:#fff;cursor:pointer;font-size:13px}.tpl button.on{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
 .lk{display:flex;gap:12px;align-items:center;margin-top:10px;padding:10px;background:var(--card2);border-radius:10px;font-size:13px}.lk b{word-break:break-word}
+#out{touch-action:none}
+#clipbars{position:absolute;inset:0;pointer-events:none;border-radius:8px;overflow:hidden}.cb{position:absolute;top:0;bottom:0;border-left:1px solid #fff9;font-size:11px;color:#fff;padding:2px 4px}
 .hidden{display:none!important}
 </style>
 </head>
@@ -105,7 +107,7 @@ input[type=number]{background:var(--card);border:1px solid var(--bd);border-radi
    <label class="t">Vol <input type="range" id="pvol" min="0" max="1" step="0.01" value="1"></label>
    <button class="btn sm" id="fs">Fullscreen</button>
   </div>
-  <div class="tl" id="tl"><div class="sel" id="sel"></div><div class="hd" id="hs"></div><div class="hd" id="he"></div><div class="ph" id="ph"></div></div>
+  <div class="tl" id="tl"><div id="clipbars"></div><div class="sel" id="sel"></div><div class="hd" id="hs"></div><div class="hd" id="he"></div><div class="ph" id="ph"></div></div>
   <div class="tt"><span>Start <b id="tS">00:00.0</b></span><span>Length <b id="tL">00:00.0</b></span><span>End <b id="tE">00:00.0</b></span></div>
  </div>
 </section>
@@ -122,16 +124,16 @@ input[type=number]{background:var(--card);border:1px solid var(--bd);border-radi
   </div>
   <div class="note">Format: MP4 (H.264/AAC) when your browser supports it, otherwise WebM. <span id="fmtNote"></span></div>
  </div>
- <div class="sec"><h2>Multiple shorts</h2>
-  <div class="note">Cut one long video into several Shorts. Each segment is exported with your current crop, background, captions and audio settings.</div>
-  <div class="seg"><button id="segAdd">Add current trim</button><button id="segClear">Clear</button></div>
+ <div class="sec"><h2>Clips (multiple shorts)</h2>
+  <div class="note">Set the trim handles and press "Add selection as clip", or move the playhead to a cut point and press "Split at playhead", or auto-split. Clips appear as colored bars on the timeline.</div>
+  <div class="seg"><button id="segAdd">Add selection as clip</button><button id="segSplitAt">Split at playhead</button><button id="segClear">Clear</button></div>
   <div class="row"><label>Auto-split</label><select id="splitN"><option value="15">Every 15 s</option><option value="30">Every 30 s</option><option value="45">Every 45 s</option><option value="60" selected>Every 60 s</option><option value="90">Every 90 s</option></select><button class="btn sm" id="segSplit">Split trim range</button></div>
-  <div id="segList"></div><div class="note" id="segCnt">0 segment(s)</div>
-  <button class="btn pri" id="goAll" style="width:100%" disabled>Convert all segments</button>
+  <div class="row"><label>Export as</label><select id="clipMode"><option value="sep">Separate Shorts (one file per clip)</option><option value="join">One joined Short</option></select></div>
+  <div id="segList"></div><div class="note" id="segCnt"></div>
  </div>
  <div class="sec"><h2>Quality</h2>
-  <div class="row"><label>Bitrate</label><select id="qual" data-p><option value="10">Standard 10 Mbps</option><option value="16" selected>Balanced 16 Mbps (smooth everywhere)</option><option value="25">High 25 Mbps</option><option value="50">Maximum 50 Mbps</option></select></div>
-  <div class="row"><label>Resolution</label><select id="resS" data-p><option value="1" selected>Preset size</option><option value="1.5">1.5x</option><option value="2">2x (up to 4K)</option></select></div>
+  <div class="row"><label>Bitrate</label><select id="qual" data-p><option value="src" selected>Same as source (auto)</option><option value="10">Standard 10 Mbps</option><option value="16">Balanced 16 Mbps</option><option value="25">High 25 Mbps</option><option value="50">Maximum 50 Mbps</option></select></div>
+  <div class="row"><label>Resolution</label><select id="resS" data-p><option value="auto" selected>Match source (best detail)</option><option value="1">Preset size</option><option value="1.5">1.5x</option><option value="2">2x (up to 4K)</option></select></div>
   <div class="row"><label>Frame rate</label><select id="fps" data-p><option value="30" selected>30 fps</option><option value="60">60 fps</option></select></div>
   <div class="note">Edits (crop, background, captions) need re-encoding, so they cannot be bit-identical. For exact original quality use the two buttons under Convert.</div>
  </div>
@@ -181,16 +183,18 @@ input[type=number]{background:var(--card);border:1px solid var(--bd);border-radi
   <div class="row"><label class="tog" style="flex:0 0 92px;margin:0"><input type="checkbox" id="capHl" data-p> Word glow</label><input type="color" id="capHc" value="#ffd60a" data-p><label class="tog" style="flex:1;margin:0"><input type="checkbox" id="capS" checked data-p> Shadow</label></div>
   <div class="note">Word glow highlights each word in turn during the caption (karaoke style). Automatic speech-to-text is not included.</div>
  </div>
- <div class="sec"><h2>Title, subtitle, watermark</h2>
-  <div class="row"><input type="text" id="tiT" placeholder="Title" data-p></div>
-  <div class="row"><input type="text" id="tiS" placeholder="Subtitle" data-p></div>
-  <div class="row"><input type="text" id="tiW" placeholder="Watermark / custom text" data-p></div>
-  <div class="row"><label>Font</label><select id="tiF" data-p><option>Inter, system-ui, sans-serif</option><option>Georgia, serif</option><option>Impact, sans-serif</option></select></div>
-  <div class="row"><label>Size</label><input type="range" id="tiSz" min="3" max="10" step="0.5" value="6" data-p></div>
-  <div class="row"><label>Weight</label><select id="tiWt" data-p><option value="400">Regular</option><option value="700" selected>Bold</option></select></div>
-  <div class="row"><label>Position</label><input type="range" id="tiY" min="5" max="40" value="12" data-p></div>
-  <div class="row"><label>Opacity</label><input type="range" id="tiO" min="0.1" max="1" step="0.05" value="1" data-p></div>
-  <div class="row"><label>Color</label><input type="color" id="tiC" value="#ffffff" data-p><label class="tog" style="flex:1;margin:0"><input type="checkbox" id="tiSh" checked data-p> Shadow</label></div>
+ <div class="sec"><h2>Text layers (headings, titles, watermark)</h2>
+  <div class="seg"><button data-l="heading">+ Heading</button><button data-l="sub">+ Subheading</button><button data-l="text">+ Text</button><button data-l="lower">+ Lower third</button><button data-l="mark">+ Watermark</button></div>
+  <div class="note">Drag text directly on the "Output preview" to move it. Pick a layer below to edit it. Show from/to = 0 means visible for the whole clip.</div>
+  <div class="seg" id="lyChips"></div><div id="lyEd"></div>
+  <div class="seg"><button id="lyDup">Duplicate</button><button id="lyNow">Start at playhead</button><button id="lyDel">Delete</button></div>
+ </div>
+ <div class="sec"><h2>Video adjust</h2>
+  <div class="row"><label>Brightness</label><input type="range" id="fBr" min="50" max="150" value="100" data-p></div>
+  <div class="row"><label>Contrast</label><input type="range" id="fCo" min="50" max="150" value="100" data-p></div>
+  <div class="row"><label>Saturation</label><input type="range" id="fSa" min="0" max="200" value="100" data-p></div>
+  <div class="row"><label>Zoom</label><input type="range" id="zoom" min="1" max="2.5" step="0.05" value="1" data-p></div>
+  <div class="row"><label class="tog" style="margin:0"><input type="checkbox" id="fMi" data-p> Mirror video</label><button class="btn sm" id="adjReset">Reset</button></div>
  </div>
  <div class="sec"><h2>Audio</h2>
   <label class="tog"><input type="checkbox" id="aOn" checked data-p> Keep original audio</label>
@@ -253,7 +257,7 @@ v.onloadedmetadata=()=>{
 /* ---------- crop math: single source of truth for preview and export ---------- */
 function cropRect(aspect,vw,vh){
  let cw,ch;if(vw/vh>aspect){ch=vh;cw=vh*aspect}else{cw=vw;ch=vw/aspect}
- return{cw,ch,sx:(vw-cw)*S.cx,sy:(vh-ch)*S.cy};
+ const z=Math.max(1,num('zoom')||1);cw/=z;ch/=z;return{cw,ch,sx:(vw-cw)*S.cx,sy:(vh-ch)*S.cy};
 }
 function layout(){
  const f=$('cropf');
@@ -320,7 +324,7 @@ function text(x,W,H,s,o){
  if(!s)return;o={...D,...o};const px=o.size/100*W;x.save();x.globalAlpha=o.alpha;x.font=`${o.weight} ${px}px ${o.font}`;x.textBaseline='middle';x.textAlign='left';x.lineJoin='round';
  const lines=wrap(x,s,W*.86),lh=px*1.25,cy=o.y/100*H,sp=x.measureText(' ').width,nW=s.split(/\s+/).length,act=o.hl?Math.floor(clamp(o.prog,0,.999)*nW):-1;let wi=0;
  if(o.scale!==1){x.translate(W/2,cy);x.scale(o.scale,o.scale);x.translate(-W/2,-cy)}
- lines.forEach((l,i)=>{const y=cy+(i-(lines.length-1)/2)*lh,w=x.measureText(l).width,bx=o.align==='left'?W*.07:o.align==='right'?W*.93-w:(W-w)/2;
+ lines.forEach((l,i)=>{const y=cy+(i-(lines.length-1)/2)*lh,w=x.measureText(l).width,bx=o.align==='left'?W*.07:o.align==='right'?W*.93-w:(o.x==null?W/2:o.x/100*W)-w/2;if(o.bb){const b=o.bb;b.x0=Math.min(b.x0,bx-px*.4);b.x1=Math.max(b.x1,bx+w+px*.4);b.y0=Math.min(b.y0,y-lh/2);b.y1=Math.max(b.y1,y+lh/2)}
   if(o.bg){x.save();x.globalAlpha*=o.bgo;x.fillStyle=o.bgc;rr(x,bx-px*.4,y-lh/2,w+px*.8,lh,o.radius*px);x.fill();x.restore()}
   let cx=bx;l.split(' ').forEach(wd=>{const ww=x.measureText(wd).width;x.save();
    if(o.shadow){x.shadowColor='rgba(0,0,0,.85)';x.shadowBlur=px*.25;x.shadowOffsetY=px*.06}
@@ -329,29 +333,33 @@ function text(x,W,H,s,o){
 }
 
 /* ---------- compositor: used by live preview AND export ---------- */
-function compose(c,src,W,H){
+function compose(c,src,W,H,ui){
  const x=c.getContext('2d'),vw=src.videoWidth,vh=src.videoHeight;if(!vw)return;
- if(S.bg==='orig'){const r=cropRect(W/H,vw,vh);x.drawImage(src,r.sx,r.sy,r.cw,r.ch,0,0,W,H)}
+ const adj=`brightness(${val('fBr')}%) contrast(${val('fCo')}%) saturate(${val('fSa')}%)`,z=Math.max(1,num('zoom')||1),mir=val('fMi');
+ const vid=(sx,sy,sw,sh,dx,dy,dw,dh,pre)=>{x.save();x.filter=(pre||'')+' '+adj;if(mir){x.translate(W,0);x.scale(-1,1);dx=W-dx-dw}x.drawImage(src,sx,sy,sw,sh,dx,dy,dw,dh);x.restore()};
+ if(S.bg==='orig'){const r=cropRect(W/H,vw,vh);vid(r.sx,r.sy,r.cw,r.ch,0,0,W,H)}
  else{
-  if(S.bg==='blur'){const s=Math.max(W/vw,H/vh)*1.1,w=vw*s,h=vh*s;x.filter=`blur(${num('blur')*W/1080}px)`;x.drawImage(src,(W-w)/2,(H-h)/2,w,h);x.filter='none';x.fillStyle='rgba(0,0,0,.25)';x.fillRect(0,0,W,H)}
+  if(S.bg==='blur'){const s=Math.max(W/vw,H/vh)*1.1,w=vw*s,h=vh*s;vid(0,0,vw,vh,(W-w)/2,(H-h)/2,w,h,`blur(${num('blur')*W/1080}px)`);x.fillStyle='rgba(0,0,0,.25)';x.fillRect(0,0,W,H)}
   else if(S.bg==='solid'){x.fillStyle=val('c1');x.fillRect(0,0,W,H)}
   else{const g=x.createLinearGradient(0,0,W*.4,H);g.addColorStop(0,val('c2'));g.addColorStop(1,val('c3'));x.fillStyle=g;x.fillRect(0,0,W,H)}
-  const s=Math.min(W/vw,H/vh),w=vw*s,h=vh*s;x.drawImage(src,(W-w)/2,(H-h)/2,w,h);
- }
- if(val('capOn')){const t=src.currentTime,c2=S.caps.find(k=>k.t&&t>=k.s&&t<k.e);
+  const s=Math.min(W/vw,H/vh)*z,w=vw*s,h=vh*s;vid(0,0,vw,vh,(W-w)/2,(H-h)/2,w,h)}
+ const t=src.currentTime,rs=S.rs!=null?S.rs:S.start;
+ if(val('capOn')){const c2=S.caps.find(k=>k.t&&t>=k.s&&t<k.e);
   if(c2){const an=val('capAn'),k=clamp((t-c2.s)/.2,0,1);
    text(x,W,H,val('capU')?c2.t.toUpperCase():c2.t,{size:num('capSz'),weight:val('capW'),font:val('capFont'),color:val('capC'),align:val('capA'),y:num('capY'),
     bg:val('capB'),bgc:val('capBc'),bgo:num('capBo'),shadow:val('capS'),stroke:num('capSt'),strokeC:val('capSc'),hl:val('capHl'),hlc:val('capHc'),
     prog:(t-c2.s)/Math.max(.1,c2.e-c2.s),alpha:an==='none'?1:k,scale:an==='pop'?.75+.25*k:1})}}
- const tb={size:num('tiSz'),weight:val('tiWt'),font:val('tiF'),color:val('tiC'),align:'center',shadow:val('tiSh'),alpha:num('tiO')},y=num('tiY');
- text(x,W,H,val('tiT'),{...tb,y});
- text(x,W,H,val('tiS'),{...tb,size:tb.size*.6,weight:400,y:y+tb.size*W/H*1.3});
- text(x,W,H,val('tiW'),{...tb,size:tb.size*.45,weight:400,y:94,alpha:tb.alpha*.7});
+ S.layers.forEach((L,i)=>{const vis=L.t&&((!L.s&&!L.e)||(t>=L.s&&t<=(L.e||1e9)));if(!vis){L._bb=null;return}
+  const k=L.an==='none'?1:clamp((t-(L.s||rs))/.35,0,1),bb={x0:1e9,y0:1e9,x1:-1e9,y1:-1e9};
+  text(x,W,H,L.t,{size:L.size,weight:L.weight,font:L.font,color:L.color,align:'center',x:L.x,y:L.y+(L.an==='slide'?(1-k)*4:0),bg:L.bg,bgc:L.bgc,bgo:L.bgo,
+   shadow:L.shadow,stroke:L.stroke,strokeC:L.strokeC,alpha:L.op*k,scale:L.an==='pop'?.7+.3*k:1,bb});
+  L._bb={x0:bb.x0/W,y0:bb.y0/H,x1:bb.x1/W,y1:bb.y1/H};
+  if(ui&&i===S.sel){x.save();x.strokeStyle='#6d7bff';x.lineWidth=3;x.setLineDash([10,8]);x.strokeRect(bb.x0,bb.y0,bb.x1-bb.x0,bb.y1-bb.y0);x.restore()}});
 }
 function render(){
  if(S.view==='out'&&v.videoWidth){const sc=Math.min(1,540/S.W);const w=Math.round(S.W*sc),h=Math.round(S.H*sc);
   if(out.width!==w||out.height!==h){out.width=w;out.height=h}
-  compose(out,v,w,h)}
+  compose(out,v,w,h,true)}
  requestAnimationFrame(render);
 }
 
@@ -364,7 +372,7 @@ document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button[dat
  [...document.querySelectorAll('.tabs [data-view]')].forEach(x=>x.classList.toggle('on',x===b));
  $('stage').style.display=S.view==='src'?'inline-block':'none';out.style.display=S.view==='out'?'block':'none'};
 v.ontimeupdate=()=>{if(v.currentTime>=S.end&&!v.paused){v.pause();v.currentTime=S.end}tlDraw()};
-function tlDraw(){const d=v.duration||1;$('hs').style.left=S.start/d*100+'%';$('he').style.left=S.end/d*100+'%';
+function tlDraw(){bars();const d=v.duration||1;$('hs').style.left=S.start/d*100+'%';$('he').style.left=S.end/d*100+'%';
  $('sel').style.left=S.start/d*100+'%';$('sel').style.width=(S.end-S.start)/d*100+'%';$('ph').style.left=v.currentTime/d*100+'%';
  $('cur').textContent=fmt(v.currentTime);$('tS').textContent=fmt(S.start);$('tE').textContent=fmt(S.end);$('tL').textContent=fmt(S.end-S.start)}
 (()=>{const tl=$('tl');let h=null;
@@ -375,20 +383,63 @@ function tlDraw(){const d=v.duration||1;$('hs').style.left=S.start/d*100+'%';$('
   el.onpointerup=()=>h=null});
  tl.onpointerdown=e=>{if(e.target!==tl&&e.target!==$('sel'))return;v.currentTime=clamp(tAt(e),0,v.duration)};})();
 
-/* ---------- multiple shorts: segment list ---------- */
+/* ---------- clips (multiple shorts) ---------- */
 S.segs=[];
+const goLabel=()=>S.segs.length?'Convert '+S.segs.length+' clip'+(S.segs.length>1?'s':''):'Convert to Short';
+function bars(){const d=v.duration;if(!d)return;$('clipbars').innerHTML=S.segs.map((g,i)=>'<div class="cb" style="left:'+g.s/d*100+'%;width:'+(g.e-g.s)/d*100+'%;background:hsl('+(i*67%360)+' 70% 50% / .55)">'+(i+1)+'</div>').join('')}
 function renderSegs(){const L=$('segList');L.innerHTML='';S.segs.sort((a,b)=>a.s-b.s);
  S.segs.forEach((g,i)=>{const r=document.createElement('div');r.className='cr';
-  r.innerHTML='<input type="text" placeholder="Name"><input type="number" step="0.1" min="0" aria-label="Start seconds"><input type="number" step="0.1" min="0" aria-label="End seconds"><button class="btn sm">Set as trim</button><button class="btn sm">Delete</button>';
-  const [n,a,b,u,d]=r.children;n.value=g.n;a.value=g.s.toFixed(1);b.value=g.e.toFixed(1);
-  n.oninput=()=>{g.n=n.value};a.onchange=()=>{g.s=+a.value||0};b.onchange=()=>{g.e=+b.value||0};
-  u.onclick=()=>{S.start=clamp(g.s,0,v.duration);S.end=clamp(g.e,S.start+.2,v.duration);v.currentTime=S.start;tlDraw()};
+  r.innerHTML='<input type="text" placeholder="Clip '+(i+1)+' name"><input type="number" step="0.1" min="0" aria-label="Start seconds"><input type="number" step="0.1" min="0" aria-label="End seconds"><button class="btn sm">Preview</button><button class="btn sm">Delete</button>';
+  const [n,a,b,u,d]=r.children;n.value=g.n||'';a.value=g.s.toFixed(1);b.value=g.e.toFixed(1);
+  n.oninput=()=>{g.n=n.value};a.onchange=()=>{g.s=+a.value||0;bars()};b.onchange=()=>{g.e=+b.value||0;bars()};
+  u.onclick=()=>{S.start=clamp(g.s,0,v.duration);S.end=clamp(g.e,S.start+.2,v.duration);v.currentTime=S.start;tlDraw();v.play()};
   d.onclick=()=>{S.segs.splice(i,1);renderSegs()};L.appendChild(r)});
- $('segCnt').textContent=S.segs.length+' segment(s)'}
-$('segAdd').onclick=()=>{S.segs.push({s:S.start,e:S.end,n:'Short '+(S.segs.length+1)});renderSegs()};
+ const tot=S.segs.reduce((p,g)=>p+g.e-g.s,0);
+ $('segCnt').textContent=S.segs.length?S.segs.length+' clip(s), total '+fmt(tot)+'. "Convert" exports all clips.':'No clips yet. "Convert" will export the current trim as one Short.';
+ if(!S.exporting)$('go').textContent=goLabel();bars()}
+$('segAdd').onclick=()=>{S.segs.push({s:S.start,e:S.end,n:''});renderSegs()};
 $('segClear').onclick=()=>{S.segs=[];renderSegs()};
+$('segSplitAt').onclick=()=>{const t=v.currentTime;if(!S.segs.length)S.segs=[{s:S.start,e:S.end,n:''}];
+ const g=S.segs.find(k=>t>k.s+.2&&t<k.e-.2);if(!g)return alert('Move the playhead inside a clip (at least 0.2 s from its edges), then split.');
+ S.segs.push({s:t,e:g.e,n:''});g.e=t;renderSegs()};
 $('segSplit').onclick=()=>{const n=+val('splitN');S.segs=[];
- for(let t=S.start;t<S.end-.5;t+=n){let e=Math.min(t+n,S.end);if(S.end-e<n*.3)e=S.end;S.segs.push({s:t,e,n:'Short '+(S.segs.length+1)});if(e>=S.end)break}renderSegs()};
+ for(let t=S.start;t<S.end-.5;t+=n){let e=Math.min(t+n,S.end);if(S.end-e<n*.3)e=S.end;S.segs.push({s:t,e,n:''});if(e>=S.end)break}renderSegs()};
+
+/* ---------- text layers ---------- */
+const FONTS=['Inter, system-ui, sans-serif','Georgia, serif','"Courier New", monospace','Impact, sans-serif','Arial Black, sans-serif'];
+S.layers=[];S.sel=-1;S.eds={};
+const LP={heading:{t:'Your Heading',size:9,weight:'900',y:14,shadow:true},sub:{t:'Subheading goes here',size:5,weight:'600',y:22,shadow:true},
+ text:{t:'Custom text',size:6,weight:'700',y:50,shadow:true},mark:{t:'@yourname',size:3.2,weight:'600',y:94,op:.65,shadow:true},
+ lower:{t:'Name | Title',size:5,weight:'800',y:84,bg:true,bgc:'#6d7bff'}};
+const LF=[['Text','text','t'],['Font','sel','font',FONTS.map(f=>[f,f.split(',')[0].replace(/"/g,'')])],['Size','range','size',2,16,.5],['Weight','sel','weight',[['400','Regular'],['700','Bold'],['900','Black']]],
+ ['Color','color','color'],['Horizontal','range','x',0,100,1],['Vertical','range','y',0,100,1],['Opacity','range','op',.1,1,.05],['Outline','range','stroke',0,14,1],['Outline color','color','strokeC'],
+ ['Box','chk','bg'],['Box color','color','bgc'],['Shadow','chk','shadow'],['Animation','sel','an',[['none','None'],['fade','Fade in'],['pop','Pop in'],['slide','Slide up']]],['Show from (s)','num','s'],['Show to (s)','num','e']];
+function chips(){const c=$('lyChips');c.innerHTML='';S.layers.forEach((L,i)=>{const b=document.createElement('button');b.textContent=(i+1)+'. '+(L.t||'(empty)').slice(0,14);b.className=i===S.sel?'on':'';b.onclick=()=>{S.sel=i;chips();editor();showOut()};c.appendChild(b)})}
+function editor(){const box=$('lyEd');box.innerHTML='';S.eds={};const L=S.layers[S.sel];if(!L)return;
+ LF.forEach(([lab,type,key,a,b,st])=>{const r=document.createElement('div');r.className='row';const lb=document.createElement('label');lb.textContent=lab;r.appendChild(lb);let el;
+  if(type==='sel'){el=document.createElement('select');a.forEach(([v2,t2])=>{const o=document.createElement('option');o.value=v2;o.textContent=t2;el.appendChild(o)});el.value=L[key]}
+  else{el=document.createElement('input');el.type=type==='chk'?'checkbox':type==='num'?'number':type;
+   if(type==='range'){el.min=a;el.max=b;el.step=st}if(type==='num'){el.step='0.1';el.min='0'}
+   if(type==='chk')el.checked=!!L[key];else el.value=L[key]}
+  el.oninput=()=>{L[key]=type==='chk'?el.checked:(type==='range'||type==='num')?+el.value:el.value;if(key==='t')chips()};
+  S.eds[key]=el;r.appendChild(el);box.appendChild(r)})}
+function addLayer(k){S.layers.push({font:FONTS[0],weight:'700',color:'#ffffff',size:6,x:50,y:50,op:1,stroke:0,strokeC:'#000000',bg:false,bgc:'#000000',bgo:.7,shadow:false,an:'fade',s:0,e:0,...LP[k]});
+ S.sel=S.layers.length-1;chips();editor();showOut()}
+document.querySelectorAll('[data-l]').forEach(b=>{b.onclick=()=>addLayer(b.dataset.l)});
+$('lyDup').onclick=()=>{const L=S.layers[S.sel];if(!L)return;S.layers.push({...L,y:Math.min(95,L.y+5)});S.sel=S.layers.length-1;chips();editor()};
+$('lyDel').onclick=()=>{if(S.sel<0)return;S.layers.splice(S.sel,1);S.sel=Math.min(S.sel,S.layers.length-1);chips();editor()};
+$('lyNow').onclick=()=>{const L=S.layers[S.sel];if(!L)return;L.s=+v.currentTime.toFixed(1);if(L.e<=L.s)L.e=Math.min(+(L.s+3).toFixed(1),v.duration);editor()};
+(()=>{let d=null;
+ out.onpointerdown=e=>{const r=out.getBoundingClientRect(),px=(e.clientX-r.left)/r.width,py=(e.clientY-r.top)/r.height;
+  for(let i=S.layers.length-1;i>=0;i--){const b=S.layers[i]._bb;if(b&&px>=b.x0&&px<=b.x1&&py>=b.y0&&py<=b.y1){
+   S.sel=i;d={i,px,py,x:S.layers[i].x,y:S.layers[i].y};out.setPointerCapture(e.pointerId);chips();editor();return}}};
+ out.onpointermove=e=>{if(!d)return;const r=out.getBoundingClientRect(),L=S.layers[d.i];
+  L.x=clamp(d.x+((e.clientX-r.left)/r.width-d.px)*100,0,100);L.y=clamp(d.y+((e.clientY-r.top)/r.height-d.py)*100,0,100);
+  if(S.eds.x){S.eds.x.value=L.x;S.eds.y.value=L.y}};
+ out.onpointerup=()=>{d=null}})();
+$('zoom').addEventListener('input',layout);
+$('adjReset').onclick=()=>{[['fBr',100],['fCo',100],['fSa',100],['zoom',1]].forEach(([i,v2])=>{$(i).value=v2});$('fMi').checked=false;layout();save()};
+renderSegs();
 
 /* ---------- auto captions: Whisper in the browser (transformers.js) ---------- */
 $('acGo').onclick=async()=>{
@@ -458,7 +509,7 @@ $('lnk').addEventListener('input',()=>{clearTimeout(infoWait);infoWait=setTimeou
 const MIMES=['video/mp4;codecs=avc1.640033,mp4a.40.2','video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
 const pickMime=()=>MIMES.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||'';
 $('fmtNote').textContent=window.VideoEncoder&&window.VideoFrame?'Smooth engine: frame-accurate, constant-frame-rate H.264 MP4 (WebCodecs).':'This browser lacks WebCodecs; it will record in real time, then try FFmpeg.wasm to fix the frame rate.';
-function lock(b){S.exporting=b;document.querySelectorAll('aside button,aside input,aside select,aside textarea,.tabs button,#file').forEach(e=>e.disabled=b);$('go').disabled=b;$('go').textContent=b?'Processing...':'Convert to Short'}
+function lock(b){S.exporting=b;document.querySelectorAll('aside button,aside input,aside select,aside textarea,.tabs button,#file').forEach(e=>e.disabled=b);$('go').disabled=b;$('go').textContent=b?'Processing...':goLabel()}
 function prog(p,msg,eta){$('prog').style.display='block';$('pBar').style.width=Math.round(p*100)+'%';$('pMsg').textContent=msg+' '+Math.round(p*100)+'%';$('pEta').textContent=eta||''}
 const baseName=()=>S.file.name.replace(/\.[^.]+$/,'')||'short';
 S.results=[];
@@ -486,7 +537,7 @@ async function getFF(){ // lazy-load FFmpeg.wasm only when needed
 }
 async function toMp4(blob,onP){
  onP(.85,'Loading FFmpeg...','');const ff=await getFF();ff.setProgress(({ratio})=>onP(.85+.15*clamp(ratio,0,1),'Converting to MP4',''));
- const crf={10:20,16:17,25:15,50:12}[val('qual')]||16;
+ const crf={src:14,10:20,16:17,25:15,50:12}[val('qual')]||16;
  ff.FS('writeFile','in.webm',new Uint8Array(await blob.arrayBuffer()));
  await ff.run('-i','in.webm','-vf','fps='+val('fps'),'-c:v','libx264','-preset','veryfast','-crf',String(crf),'-pix_fmt','yuv420p','-c:a','aac','-b:a','256k','-movflags','+faststart','out.mp4');
  const d=ff.FS('readFile','out.mp4');ff.FS('unlink','in.webm');ff.FS('unlink','out.mp4');return new Blob([d.buffer],{type:'video/mp4'});
@@ -504,8 +555,8 @@ $('lossless').onclick=async()=>{ // stream copy: no re-encode, no crop/captions;
 };
 
 /* encode one range [a,b] to a Blob using the same compositor as the preview */
-async function encodeMR(a,b,onP){
- const mime=pickMime(),sc=num('resS'),W=Math.round(S.W*sc/2)*2,H=Math.round(S.H*sc/2)*2,dur=b-a,fps=+val('fps');
+async function encodeMR(a,b,onP){S.rs=a;
+ const mime=pickMime(),sc=outScale(),W=Math.round(S.W*sc/2)*2,H=Math.round(S.H*sc/2)*2,dur=b-a,fps=+val('fps');
  const ev=document.createElement('video');ev.src=S.url;ev.playsInline=true;ev.preload='auto';
  await new Promise((ok,no)=>{ev.onloadeddata=ok;ev.onerror=no});
  ev.currentTime=a;await new Promise(r=>{ev.onseeked=r});
@@ -514,7 +565,7 @@ async function encodeMR(a,b,onP){
  if(val('aOn')){ac=new (window.AudioContext||window.webkitAudioContext)();await ac.resume();
   const src=ac.createMediaElementSource(ev),g=ac.createGain(),dst=ac.createMediaStreamDestination();
   src.connect(g);g.connect(dst);stream.addTrack(dst.stream.getAudioTracks()[0]);ev._g=g}
- const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:num('qual')*1e6,audioBitsPerSecond:256e3}),chunks=[];
+ const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:qualBits(),audioBitsPerSecond:256e3}),chunks=[];
  rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
  const stopped=new Promise(r=>rec.onstop=r),fi=num('aFi'),fo=num('aFo'),vol=num('aVol'),t0=performance.now();
  rec.start(500);await ev.play();
@@ -541,59 +592,68 @@ async function audioFor(a,b,fi,fo,vol){ // trimmed, volume/fade-shaped stereo au
  if(fo>0){g.gain.setValueAtTime(vol,Math.max(fi,dur-fo));g.gain.linearRampToValueAtTime(0,dur)}
  src.start(0,a,dur);return oc.startRendering();
 }
-async function encodeWC(a,b,onP){
+const qualBits=()=>val('qual')==='src'?clamp(S.file.size*8/Math.max(1,v.duration),8e6,40e6):(parseFloat(val('qual'))||16)*1e6;
+function outScale(){const r=val('resS');if(r!=='auto')return +r;const vw=v.videoWidth;
+ const need=S.bg==='orig'?cropRect(S.W/S.H,vw,v.videoHeight).ch/S.H:vw/S.W;return clamp(need,1,2)}
+/* ranges = [[start,end],...]; several ranges are joined into one MP4 */
+async function encodeWC(ranges,onP){
  if(!window.Mp4Muxer)await loadScript('https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js');
- const sc=num('resS'),W=Math.round(S.W*sc/2)*2,H=Math.round(S.H*sc/2)*2,fps=+val('fps'),dur=b-a,n=Math.max(1,Math.round(dur*fps));
+ const sc=outScale(),W=Math.round(S.W*sc/2)*2,H=Math.round(S.H*sc/2)*2,fps=+val('fps');
+ const cnt=ranges.map(([a,b])=>Math.max(1,Math.round((b-a)*fps))),N=cnt.reduce((p,q)=>p+q,0);
  let vcfg=null;
- for(const c of ['avc1.640033','avc1.4d0033','avc1.42003e']){const cfg={codec:c,width:W,height:H,bitrate:num('qual')*1e6,framerate:fps,latencyMode:'quality',avc:{format:'avc'}};
+ for(const c of ['avc1.640033','avc1.4d0033','avc1.42003e']){const cfg={codec:c,width:W,height:H,bitrate:qualBits(),framerate:fps,latencyMode:'quality',avc:{format:'avc'}};
   if((await VideoEncoder.isConfigSupported(cfg)).supported){vcfg=cfg;break}}
  if(!vcfg)throw new Error('H.264 encoder unavailable');
- let audio=null,acfg=null;
+ let auds=null,acfg=null;
  if(val('aOn')){if(!window.AudioEncoder)throw new Error('no AudioEncoder');
-  onP(0,'Preparing audio...','');audio=await audioFor(a,b,num('aFi'),num('aFo'),num('aVol'));
+  onP(0,'Preparing audio...','');auds=[];
+  for(let k=0;k<ranges.length;k++)auds.push(await audioFor(ranges[k][0],ranges[k][0]+cnt[k]/fps,k===0?num('aFi'):0,k===ranges.length-1?num('aFo'):0,num('aVol')));
   for(const c of ['mp4a.40.2','opus']){const cfg={codec:c,sampleRate:48000,numberOfChannels:2,bitrate:192e3};if((await AudioEncoder.isConfigSupported(cfg)).supported){acfg=cfg;break}}
   if(!acfg)throw new Error('no audio codec')}
  const target=new Mp4Muxer.ArrayBufferTarget(),mo={target,video:{codec:'avc',width:W,height:H,frameRate:fps},fastStart:'in-memory'};
  if(acfg)mo.audio={codec:acfg.codec==='opus'?'opus':'aac',numberOfChannels:2,sampleRate:48000};
  const mux=new Mp4Muxer.Muxer(mo);let err=null;
  const ve=new VideoEncoder({output:(c,m)=>mux.addVideoChunk(c,m),error:e=>{err=e}});ve.configure(vcfg);
- if(acfg){const ae=new AudioEncoder({output:(c,m)=>mux.addAudioChunk(c,m),error:e=>{err=e}});ae.configure(acfg);
-  const L=audio.getChannelData(0),R=audio.getChannelData(1),CH=4800;
-  for(let o=0;o<L.length;o+=CH){const k=Math.min(CH,L.length-o),d=new Float32Array(k*2);d.set(L.subarray(o,o+k),0);d.set(R.subarray(o,o+k),k);
-   ae.encode(new AudioData({format:'f32-planar',sampleRate:48000,numberOfFrames:k,numberOfChannels:2,timestamp:Math.round(o/48000*1e6),data:d}));
-   if(ae.encodeQueueSize>50)await new Promise(r=>setTimeout(r,5))}
+ if(acfg){const ae=new AudioEncoder({output:(c,m)=>mux.addAudioChunk(c,m),error:e=>{err=e}});ae.configure(acfg);let base=0;
+  for(let k=0;k<auds.length;k++){const L=auds[k].getChannelData(0),R=auds[k].getChannelData(1),CH=4800;
+   for(let o=0;o<L.length;o+=CH){const q=Math.min(CH,L.length-o),d=new Float32Array(q*2);d.set(L.subarray(o,o+q),0);d.set(R.subarray(o,o+q),q);
+    ae.encode(new AudioData({format:'f32-planar',sampleRate:48000,numberOfFrames:q,numberOfChannels:2,timestamp:Math.round(base*1e6+o/48000*1e6),data:d}));
+    if(ae.encodeQueueSize>50)await new Promise(r=>setTimeout(r,5))}
+   base+=cnt[k]/fps}
   await ae.flush()}
  const ev=document.createElement('video');ev.src=S.url;ev.muted=true;ev.playsInline=true;ev.preload='auto';
  await new Promise((ok,no)=>{ev.onloadeddata=ok;ev.onerror=no});
- const cv=document.createElement('canvas');cv.width=W;cv.height=H;const t0=performance.now();
- for(let i=0;i<n;i++){ // seek to the exact time of every output frame, so timing is perfect
-  if(err)throw err;const t=Math.min(a+i/fps,b-.001);
-  if(Math.abs(ev.currentTime-t)>1e-4){const sk=new Promise(r=>{ev.onseeked=r});ev.currentTime=t;await Promise.race([sk,new Promise(r=>setTimeout(r,3000))])}
-  compose(cv,ev,W,H);
-  const f=new VideoFrame(cv,{timestamp:Math.round(i*1e6/fps),duration:Math.round(1e6/fps)});
-  ve.encode(f,{keyFrame:i%(fps*2)===0});f.close();
-  while(ve.encodeQueueSize>6)await new Promise(r=>setTimeout(r,5));
-  if(i%4===0){const p=(i+1)/n,el=(performance.now()-t0)/1000;onP(p*.98,'Rendering frames',p>.02?'Estimated remaining: '+Math.ceil(el/p-el)+'s':'Estimating...')}}
+ const cv=document.createElement('canvas');cv.width=W;cv.height=H;const t0=performance.now();let gi=0;
+ for(let k=0;k<ranges.length;k++){const [a,b]=ranges[k];S.rs=a;
+  for(let j=0;j<cnt[k];j++,gi++){ // seek to the exact time of every output frame, so timing is perfect
+   if(err)throw err;const t=Math.min(a+j/fps,b-.001);
+   if(Math.abs(ev.currentTime-t)>1e-4){const sk=new Promise(r=>{ev.onseeked=r});ev.currentTime=t;await Promise.race([sk,new Promise(r=>setTimeout(r,3000))])}
+   compose(cv,ev,W,H);
+   const f=new VideoFrame(cv,{timestamp:Math.round(gi*1e6/fps),duration:Math.round(1e6/fps)});
+   ve.encode(f,{keyFrame:j===0||gi%(fps*2)===0});f.close();
+   while(ve.encodeQueueSize>6)await new Promise(r=>setTimeout(r,5));
+   if(gi%4===0){const p=(gi+1)/N,el=(performance.now()-t0)/1000;onP(p*.98,'Rendering frames',p>.02?'Estimated remaining: '+Math.ceil(el/p-el)+'s':'Estimating...')}}}
  await ve.flush();mux.finalize();
  return{blob:new Blob([target.buffer],{type:'video/mp4'}),ext:'mp4',note:''};
 }
-async function encode(a,b,onP){
- if(window.VideoEncoder&&window.VideoFrame){try{return await encodeWC(a,b,onP)}catch(e){console.warn('WebCodecs export failed, using fallback',e)}}
- return encodeMR(a,b,onP);
+async function encode(ranges,onP){
+ if(window.VideoEncoder&&window.VideoFrame){try{return await encodeWC(ranges,onP)}catch(e){console.warn('WebCodecs export failed, using fallback',e)}}
+ if(ranges.length>1)throw new Error('Joining clips needs a Chromium browser (Chrome or Edge). Use "Separate Shorts" instead.');
+ return encodeMR(ranges[0][0],ranges[0][1],onP);
 }
 async function runExports(items){
  if(S.exporting)return;
- if(!pickMime()){alert('This browser does not support video recording (MediaRecorder). Try Chrome, Edge, Firefox or Safari 14.1+.');return}
  v.pause();lock(true);clearResults();
  try{for(let i=0;i<items.length;i++){const it=items[i],pre=items.length>1?'Short '+(i+1)+' of '+items.length+': ':'';
    const onP=(p,m,e)=>prog((i+p)/items.length,pre+m,e);onP(0,'Preparing video...','');
-   const r=await encode(it.a,it.b,onP);finish(r.blob,r.ext,r.note,it.name)}}
+   const r=await encode(it.r,onP);finish(r.blob,r.ext,r.note,it.name)}}
  catch(err){console.error(err);alert('Export failed: '+(err&&err.message||'the browser could not process this video.'));$('prog').style.display='none'}
- finally{lock(false)}
+ finally{S.rs=null;lock(false)}
 }
-$('go').onclick=()=>runExports([{a:S.start,b:S.end,name:'short'}]);
-$('goAll').onclick=()=>{if(!S.segs.length){alert('Add segments first: use "Add current trim" or "Split trim range".');return}
- runExports(S.segs.filter(g=>g.e-g.s>.2).map(g=>({a:clamp(g.s,0,v.duration),b:clamp(g.e,0,v.duration),name:g.n||'short'})))};
+$('go').onclick=()=>{const D=v.duration,cl=S.segs.filter(g=>g.e-g.s>.2).map(g=>({a:clamp(g.s,0,D),b:clamp(g.e,0,D),n:g.n}));
+ if(!cl.length)return runExports([{r:[[S.start,S.end]],name:'short'}]);
+ if(val('clipMode')==='join'&&cl.length>1)return runExports([{r:cl.map(g=>[g.a,g.b]),name:'joined'}]);
+ runExports(cl.map((g,i)=>({r:[[g.a,g.b]],name:g.n||'clip'+(i+1)})))};
 
 $('theme').onclick=()=>{const r=document.documentElement,cur=r.dataset.theme||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');r.dataset.theme=cur==='dark'?'light':'dark';save()};
 load();render();window.addEventListener('resize',layout);
